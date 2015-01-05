@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?sensor=false&libraries=visualization"></script>
+<script type="text/javascript" src="static/jquery-1.7.2.js"></script>
+<script type="text/javascript" src="static/jquery.eventsource.js"></script>
+<link href="static/bootstrap.min.css" rel="stylesheet">
+<script src="static/markerclusterer.js" type="text/javascript"></script>
+
+</head>
+
+<!-- <body onload="initialize()"> -->
+
+<body>
+ <nav class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Cloud Computing: Assignment 1</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="#">Project name : Twittmap</a>
+        </div>
+      </div>
+    </nav>
+    <div class="jumbotron">
+      <div class="container">
+    <!--  <div class="btn-group">
+    <button type="button" data-toggle="dropdown" class="btn btn-default dropdown-toggle">Action <span class="caret"></span></button>
+    <ul class="dropdown-menu">
+        <li><a href="#">Action</a></li>
+        <li><a href="#">Another action</a></li>
+        <li class="divider"></li>
+        <li><a href="#">Separated link</a></li>
+    </ul>
+</div> -->
+     <!--    <h1>Welcome to Twittmap!</h1> -->
+     <h2></h2>
+        <p>This is a small application for a simple application scrawling and presenting the twitter via twitter and google APIs.</p>
+      <!-- <p><a class="btn btn-primary btn-lg" href="#" role="button">Learn more &raquo;</a></p> -->
+      </div>
+    </div>
+    
+    <div id="map" style="float: left; width: 80%;height: 600px;"></div>
+    <div id="menu" style="float: left; width: 20%;height: 600px;">Menu
+        <select name="mydropdown" id="select")>
+        <option value="coffee">coffee</option>
+        <option value="pizza">pizza</option>
+        <option value="columbia">columbia</option>
+        </select>
+    </div>
+
+<script type="text/javascript">
+   
+    var marker
+	var infowindow;
+    var markers = [];
+    var choice = document.getElementById("select");
+    var kwd = String(choice.value);
+  	var map;
+  	var markerCluster = null;
+  	
+	
+	
+    function initialize() {      
+        var config = {
+            "radius": 30,
+            "element": "map_canvas",
+            "visible": true,
+            "opacity": 40,
+            "gradient": {
+                0.45: "rgb(0,0,255)",
+                0.55: "rgb(0,255,255)",
+                0.65: "rgb(0,255,0)",
+                0.95: "yellow",
+                1.0: "rgb(255,0,0)"
+            }
+        };
+	
+        var myOptions = {
+            zoom: 2,
+            center: new google.maps.LatLng(40.774546, -70.433523),
+            mapTypeId: google.maps.MapTypeId.ROADMAP
+        };
+        
+        
+        map = new google.maps.Map(document.getElementById("map"), myOptions);
+        map.setCenter({lat: 40, lng: -70});
+       
+        
+        $.ajax({
+            url: "http://127.0.0.1:8000/api/tweet/?format=json&kwd="+kwd,
+       
+        success: function(data) {
+            
+            for (var key in data.objects) {
+            	 
+                var item = data.objects[key]
+             
+                marker = new google.maps.Marker({
+                      position: {lat: item.lon, lng: item.lat},
+                      draggable: false,
+                      map: map,
+                      title: item.tid + " : " + item.text + " (" +item.time + " )",
+                      
+                      });
+          
+               attachMessage(marker);
+               markers.push(marker);
+
+            }
+            
+        
+             markerCluster = new MarkerClusterer(map, markers, {
+                minZoom: 2,
+                maxZoom: 6,
+              });
+        },
+        
+    });
+    }
+   	
+     google.maps.event.addDomListener(window, 'load', initialize);
+   
+        
+           
+     function attachMessage(marker){
+    	 
+     	google.maps.event.addListener(marker, "click", function() {
+             	infowindow = new google.maps.InfoWindow({
+                     content: marker.title
+                     });
+                 infowindow.open(map,marker);
+                 map.setZoom(9);
+                 map.setCenter(marker.getPosition());
+                 });
+     	google.maps.event.addListener(infowindow, 'closeclick', function() {
+     		map.setCenter(marker.getPosition());
+     	});
+
+        }
+        
+
+    choice.onchange=function(){
+    	kwd=choice.value;
+
+        $.ajax({
+                   url: "http://127.0.0.1:8000/api/tweet/?format=json&kwd="+kwd,
+                   dataType: "json",
+                   
+                    success: function(data) {
+                    	deleteMarkers();
+                    	if (markerCluster) {
+                            markerCluster.clearMarkers();
+                          }
+                    	
+                    	
+                    	for (var key in data.objects) {
+                            
+                            var item = data.objects[key]
+                          
+
+                            marker = new google.maps.Marker({
+                                  position: {lat: item.lon, lng: item.lat},
+                                  draggable: false,
+                                  map: map,
+                                  title: item.tid + " : " + item.text + " (" +item.time + " )",
+                                  });
+                           
+                            markers.push(marker);
+                            
+                            attachMessage(marker);
+
+
+                        }
+                    	markerCluster = new MarkerClusterer(map, markers, {
+                            minZoom: 2,
+                            maxZoom: 6,
+                         });
+                                    
+                    },
+                    
+                });         
+    }   
+    
+    function deleteMarkers() {
+       clearMarkers();
+       markers = [];
+     }
+    function clearMarkers() {
+        setAllMap(null);
+     }
+    function setAllMap(map) {
+       for (var i = 0; i < markers.length; i++) {
+         markers[i].setMap(map);
+       }
+     }
+    function clearClusters(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        markerCluster.clearMarkers();
+      }
+
+
+    
+</script>
+</body>
+</html>
